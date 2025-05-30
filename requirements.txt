@@ -1,0 +1,12 @@
+pillow
+numpy
+torch
+torchvision
+tqdm
+opencv-python   
+pytesseract 
+matplotlib 
+cascadetabnet
+python-docx
+pandas
+tensorflow
