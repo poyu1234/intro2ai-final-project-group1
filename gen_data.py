@@ -3,15 +3,16 @@ import os
 
 def main():
     # 生成100張帶有文字的圖片
-    num_samples = 10
+    num_samples = 100
     N = 4  # 每張圖片的矩形數量
     image_size = 256  # 圖片大小
     add_text = True  # 確保添加文字
+    line_width_range = (3,5)  # 線條寬度範圍
     
     print(f"正在生成 {num_samples} 張帶有文字的圖片...")
     
     # 生成圖片
-    original_images, noisy_images = generate_images(num_samples, N, image_size, add_text)
+    original_images, noisy_images = generate_images(num_samples, N, image_size, add_text,line_thickness_range=line_width_range)
     
     # 創建保存目錄
     os.makedirs("dataset/original", exist_ok=True)

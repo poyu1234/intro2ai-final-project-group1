@@ -28,15 +28,18 @@ import numpy as np
 import cv2
 import tensorflow as tf 
 import pytesseract 
-from recover_outline import recover_outline
+from recover_outline import recover_outline_AC, recover_outline_UN
 
 # PATHS 
-input_folder = "dataset/noisy"
-output_docx_folder = "dataset/output_docx"
-visualization_folder = "dataset/visualizations"
+input_folder = "dataset/application"
+output_docx_folder = "dataset/output_docx_app"
+visualization_folder = "dataset/visualizations_app"
 denoised_folder = "dataset/denoised" 
-model_weights_path = 'model/m.weights.h5' 
+model_weights_path = 'model/m.weights.h5'
 ae_model_path = 'model/AutoEncoder.pth'
+un_model_path = 'model/UNet.pth'
+
+denoise_model = 'AutoEncoder'  # Options: 'AutoEncoder', 'UNet'
 
 
 class ImprovedTableProcessor:
@@ -159,8 +162,38 @@ class ImprovedTableProcessor:
         if self.original_image is None:
             raise ValueError("Original image is not loaded. Cannot create full comparison.")
 
-        # Apply denoising on the inverted image
-        self.denoised_image = recover_outline(self.text_removed_image, ae_model_path)
+        # Store original dimensions
+        original_height, original_width = self.text_removed_image.shape
+        
+        target_height = ((original_height + 31) // 32) * 32  # Round up to nearest multiple of 32
+        target_width = ((original_width + 31) // 32) * 32   # Round up to nearest multiple of 32
+        
+        # Resize image for denoising if dimensions don't match requirements
+        if original_height != target_height or original_width != target_width:
+            resized_image = cv2.resize(self.text_removed_image, (target_width, target_height), 
+                                     interpolation=cv2.INTER_LINEAR)
+        else:
+            resized_image = self.text_removed_image
+
+        # Apply denoising on the resized image
+        try:
+            if denoise_model == 'AutoEncoder':
+                denoised_resized = recover_outline_AC(resized_image, ae_model_path)
+            elif denoise_model == 'UNet':
+                denoised_resized = recover_outline_UN(resized_image, un_model_path)
+            else:
+                # Fallback to original image if model not recognized
+                denoised_resized = resized_image
+        except Exception as e:
+            print(f"Warning: Denoising failed with error: {e}. Using original text-removed image.")
+            denoised_resized = resized_image
+
+        # Resize back to original dimensions if we resized earlier
+        if original_height != target_height or original_width != target_width:
+            self.denoised_image = cv2.resize(denoised_resized, (original_width, original_height), 
+                                           interpolation=cv2.INTER_LINEAR)
+        else:
+            self.denoised_image = denoised_resized
 
         return self.denoised_image 
     

@@ -195,6 +195,15 @@ def run_evaluation(original_folder: str = "dataset/original",
             'count': len(ssim_od_scores)
         }
     
+    # Compute improved mean percentage (Noisy → Denoised)
+    if stats_on and stats_od and stats_on.get('mean_ssim', 0) > 0:
+        improved_mean_pct = (
+            (stats_od['mean_ssim'] - stats_on['mean_ssim'])
+            / stats_on['mean_ssim'] * 100
+        )
+    else:
+        improved_mean_pct = None
+
     if results:
         df = pd.DataFrame(results)
         df.to_csv(output_csv, index=False)
@@ -221,11 +230,16 @@ def run_evaluation(original_folder: str = "dataset/original",
     else:
         print("\nNo successful (Original vs. Denoised) evaluations.")
     
+    # New: print mean improvement percentage
+    if improved_mean_pct is not None:
+        print(f"\nMean improvement percentage (Noisy → Denoised): {improved_mean_pct:.2f}%")
+
     return {
         'status': 'completed' if results else 'no_data_processed',
         'total_original_files_found': len(matching_files_info),
         'statistics_original_vs_noisy': stats_on,
         'statistics_original_vs_denoised': stats_od,
+        'mean_improvement_percentage': improved_mean_pct,
         'results_data': results,
         'output_file': output_csv
     }

@@ -6,7 +6,7 @@ import torchvision.transforms as transforms
 from AutoEncoder import AutoEncoder
 from tqdm import tqdm
 
-from generater import generate_images
+from data import generate_images
 from dataset import TrainingDataset, TestDataset
 
 # parameters

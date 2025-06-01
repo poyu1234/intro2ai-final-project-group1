@@ -1,17 +1,14 @@
 import random
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-import string # Import string for random letter generation
-
-#parameters:
-line_thickness_range = (3, 5) # Range for line thickness
+import string
 
 def generate_random_word(min_len=2, max_len=6):
     """Generates a random word-like string of uppercase letters."""
     length = random.randint(min_len, max_len)
     return ''.join(random.choice(string.ascii_uppercase) for _ in range(length))
 
-def generate_images(num_samples, N, image_size, add_text=True) -> tuple[list[Image.Image], list[Image.Image]]: # Added add_text parameter
+def generate_images(num_samples, N, image_size, add_text=True,line_thickness_range = (1, 5)) -> tuple[list[Image.Image], list[Image.Image]]: # Added add_text parameter
     width = height = image_size
     original_images = []
     noisy_images = []
@@ -88,8 +85,6 @@ def generate_images(num_samples, N, image_size, add_text=True) -> tuple[list[Ima
                     if len(text_to_draw) == 0:
                         continue # Skip if no text generated
 
-                    # Adjust max_font_w_derived for potentially longer text
-                    # Use a smaller multiplier for char width estimation if text is long
                     char_width_estimator = 0.6 if len(text_to_draw) < 15 else 0.5
                     max_font_w_derived = (text_safe_x2 - text_safe_x1) / (len(text_to_draw) * char_width_estimator + 1)
                     
@@ -115,9 +110,6 @@ def generate_images(num_samples, N, image_size, add_text=True) -> tuple[list[Ima
                     
                     # Ensure text fits, if not, skip or try smaller font (here, we just check)
                     if text_width <= (text_safe_x2 - text_safe_x1) and text_height <= (text_safe_y2 - text_safe_y1):
-                        # Calculate random text position within the safe area
-                        # Max x for top-left corner of text is text_safe_x2 - text_width
-                        # Max y for top-left corner of text is text_safe_y2 - text_height
                         
                         if text_safe_x1 >= (text_safe_x2 - text_width): # If text barely fits or is wider
                             text_x = text_safe_x1
@@ -131,15 +123,10 @@ def generate_images(num_samples, N, image_size, add_text=True) -> tuple[list[Ima
                         
                         # Draw text on original image
                         draw_original.text((text_x, text_y), text_to_draw, fill="black", font=font)
-                        
-                        # Draw slightly distorted text on noisy image
-                        # Apply similar random placement logic for noisy image, possibly with additional small offset
+
                         noisy_text_x_offset = random.randint(-2, 2)
                         noisy_text_y_offset = random.randint(-2, 2)
 
-                        # Ensure noisy text also stays within overall image bounds if necessary,
-                        # but primarily it should be relative to the original text's random position.
-                        # For simplicity, we'll just add the small offset to the already calculated random (text_x, text_y)
                         noisy_text_x = text_x + noisy_text_x_offset
                         noisy_text_y = text_y + noisy_text_y_offset
                         
