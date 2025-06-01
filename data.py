@@ -3,6 +3,9 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 import string # Import string for random letter generation
 
+#parameters:
+line_thickness_range = (3, 5) # Range for line thickness
+
 def generate_random_word(min_len=2, max_len=6):
     """Generates a random word-like string of uppercase letters."""
     length = random.randint(min_len, max_len)
@@ -46,7 +49,7 @@ def generate_images(num_samples, N, image_size, add_text=True) -> tuple[list[Ima
 
         for rect in rectangles:
             x1, y1, x2, y2 = rect
-            line_thickness = random.randint(1, 5)
+            line_thickness = random.randint(*line_thickness_range)  # Random line thickness within specified range
 
             draw_original.rectangle([x1, y1, x2, y2], outline="black", width=line_thickness)
 

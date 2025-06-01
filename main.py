@@ -24,16 +24,17 @@ from docx.shared import Inches
 import matplotlib.pyplot as plt
 from typing import List, Tuple, Dict, Optional
 import os
-import numpy as np # Ensure numpy is imported
-import cv2 # Ensure cv2 is imported
-import tensorflow as tf # Added for DL model
-import pytesseract # Added for OCR
-from recover_outline import recover_outline # Importing the denoising function
+import numpy as np 
+import cv2
+import tensorflow as tf 
+import pytesseract 
+from recover_outline import recover_outline
 
 # PATHS 
 input_folder = "dataset/noisy"
 output_docx_folder = "dataset/output_docx"
 visualization_folder = "dataset/visualizations"
+denoised_folder = "dataset/denoised" 
 model_weights_path = 'model/m.weights.h5' 
 ae_model_path = 'model/AutoEncoder.pth'
 
@@ -77,7 +78,7 @@ class ImprovedTableProcessor:
         """
         Step 1: Load table image
         """
-        # Use OpenCV to read image
+        # read image
         self.original_image = cv2.imread(image_path)
         if self.original_image is None:
             raise ValueError(f"Cannot read image: {image_path}")
@@ -94,10 +95,7 @@ class ImprovedTableProcessor:
         """
         if self.image is None:
             raise ValueError("Please load image first")
-
-        # Binarize the image using adaptive thresholding.
-        # Assuming dark lines on a lighter background, THRESH_BINARY_INV makes lines white (255).
-        # If lines are light on dark, use THRESH_BINARY.
+        
         binary_image = cv2.adaptiveThreshold(
             self.image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
             cv2.THRESH_BINARY_INV, 11, 2  # Block size 11, C 2
@@ -105,7 +103,7 @@ class ImprovedTableProcessor:
         
         # Create multiple sized structuring elements to detect lines of different thickness
         horizontal_kernels = [
-            cv2.getStructuringElement(cv2.MORPH_RECT, (7, 1)), # Added smaller kernel
+            cv2.getStructuringElement(cv2.MORPH_RECT, (8, 1)), 
             cv2.getStructuringElement(cv2.MORPH_RECT, (10, 1)),
             cv2.getStructuringElement(cv2.MORPH_RECT, (20, 1)),
             cv2.getStructuringElement(cv2.MORPH_RECT, (40, 1)),
@@ -113,7 +111,7 @@ class ImprovedTableProcessor:
         ]
         
         vertical_kernels = [
-            cv2.getStructuringElement(cv2.MORPH_RECT, (1, 7)), # Added smaller kernel
+            cv2.getStructuringElement(cv2.MORPH_RECT, (1, 8)), 
             cv2.getStructuringElement(cv2.MORPH_RECT, (1, 10)),
             cv2.getStructuringElement(cv2.MORPH_RECT, (1, 20)),
             cv2.getStructuringElement(cv2.MORPH_RECT, (1, 40)),
@@ -131,15 +129,14 @@ class ImprovedTableProcessor:
             v_lines = cv2.morphologyEx(binary_image, cv2.MORPH_OPEN, kernel)
             vertical_lines_combined = cv2.bitwise_or(vertical_lines_combined, v_lines)
         
-        # Combine horizontal and vertical lines using bitwise_or
+        # Combine horizontal and vertical lines
         self.text_removed_image = cv2.bitwise_or(horizontal_lines_combined, vertical_lines_combined)
         
         # Filter out small connected components likely to be text remnants or noise.
         # Increased min_area for better noise removal.
         num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(self.text_removed_image, connectivity=8)
         
-        min_area = 10  # Minimum area in pixels for a component to be kept.
-                       # Adjusted from 15 to 10 to be more lenient for thin/broken lines.
+        min_area = 10  
         
         filtered_image = np.zeros_like(self.text_removed_image)
         for i in range(1, num_labels):  # Skip background label 0
@@ -147,7 +144,7 @@ class ImprovedTableProcessor:
                 filtered_image[labels == i] = 255
         
         self.text_removed_image = filtered_image
-        # Reverse black and white of text_removed_image for denoising input
+        # Reverse black and white
         self.text_removed_image = cv2.bitwise_not(self.text_removed_image)
         
         return self.text_removed_image
@@ -173,14 +170,14 @@ class ImprovedTableProcessor:
         """
         image_for_detection = self.denoised_image
 
-        # Invert the image for detection: Canny and projections might work better with white lines on black background
+        # Invert the image for detection
         detection_input_image = cv2.bitwise_not(image_for_detection)
         
         self.horizontal_lines = []
         self.vertical_lines = []
         
         # Define boundary area (exclude lines at image edges)
-        border_margin = 5  # Border margin
+        border_margin = 5 
         
         # Method 1: Hough transform detection (preserve original line lengths)
         # Use detection_input_image (white lines on black background)
@@ -208,10 +205,8 @@ class ImprovedTableProcessor:
                 # Classify horizontal and vertical lines - PRESERVE ORIGINAL COORDINATES
                 angle_tolerance = 10 
                 if abs(angle) < angle_tolerance or abs(angle) > (180 - angle_tolerance):  # Horizontal lines
-                    # Keep original line coordinates, don't extend
                     self.horizontal_lines.append((x1, y1, x2, y2))
                 elif abs(angle - 90) < angle_tolerance or abs(angle + 90) < angle_tolerance:  # Vertical lines
-                    # Keep original line coordinates, don't extend
                     self.vertical_lines.append((x1, y1, x2, y2))
         
         # Method 2: Direct analysis from morphological operation results (modified)
@@ -350,8 +345,8 @@ class ImprovedTableProcessor:
         self.vertical_lines = merge_lines_preserve_length(self.vertical_lines, False)
         
         # Filter lines that are too short, but keep partial lines
-        min_h_length = max(10, self.image_width * 0.05)  # Reduced minimum for partial lines
-        min_v_length = max(10, self.image_height * 0.05)  # Reduced minimum for partial lines
+        min_h_length = max(10, self.image_width * 0.05)  
+        min_v_length = max(10, self.image_height * 0.05)
         
         border_margin = 8
         
@@ -398,7 +393,6 @@ class ImprovedTableProcessor:
         Infer vertical line positions from text distribution with improved OCR
         """
         try:
-            # Try multiple OCR approaches
             ocr_data = self._try_multiple_ocr_configs(self.image)
             
             # Collect valid text regions with improved validation
@@ -428,7 +422,7 @@ class ImprovedTableProcessor:
                             text_regions.append((x, y, x+w, y+h))
                             valid_texts_found.append(clean_text)
             
-            # If still no good OCR results, try edge-based text detection
+            # try edge-based text detection
             if len(text_regions) < 2:
                 text_regions = self._detect_text_regions_by_edges()
             
@@ -884,8 +878,6 @@ class ImprovedTableProcessor:
         
         except Exception as e:
             print(f"Error during DL model prediction or postprocessing: {e}")
-            # Fallback to using initial lines if DL refinement fails
-            # self.horizontal_lines and self.vertical_lines retain their pre-DL values
 
         return self.horizontal_lines, self.vertical_lines
 
@@ -1158,6 +1150,13 @@ class ImprovedTableProcessor:
 
             # Step 2.5: Denoise the image
             self.step2_5_denoise_image()
+            
+            # Save denoised image
+            if self.denoised_image is not None:
+                os.makedirs(denoised_folder, exist_ok=True)
+                base_name = os.path.splitext(os.path.basename(image_path))[0]
+                denoised_path = os.path.join(denoised_folder, f"{base_name}_denoised.jpg")
+                cv2.imwrite(denoised_path, self.denoised_image)
 
             # Step 3: Detect table lines
             self.step3_detect_table_lines()
