@@ -79,22 +79,17 @@ Key components:
 
 # Hyperparameters:
 
-Autoencoder (`AutoEncoder.py`):
+train autoencoder (`train.py`):
 
-- learning_rate: 1e-3
-- batch_size: 64
-- epochs: 100
-- latent_dim: 256
-- input_size: [128, 128, 1]
-- noise_level: 0.2
+- num_images = 1000
+- image_size = 224
+- num_texts = 5
+- add_text = True
 
-LSTM line refinement (`model.py`):
+train LSTM (`line_refinement_model.py`):
 
-- R (max coordinate): 100
-- epochs per cycle: 50
-- batch_size: 500
-- line count N: 10 (range [5–15])
-- penalty_factor: 100.0
+- R = 100
+- epochs = 50
 
 data_prep (`gen_data.py`):
 
